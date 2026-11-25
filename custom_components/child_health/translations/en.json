@@ -263,10 +263,10 @@
       "message": "That child's entry isn't loaded right now."
     },
     "unknown_symptom": {
-      "message": "{child} has no symptom type called '{name}'. Add it in the integration options first."
+      "message": "{child} has no symptom type called {name}. Add it in the integration options first."
     },
     "unknown_medicine": {
-      "message": "{child} has no medicine called '{name}'. Add it in the integration options first."
+      "message": "{child} has no medicine called {name}. Add it in the integration options first."
     },
     "future_time": {
       "message": "The time can't be in the future."

@@ -7,6 +7,11 @@
   "codeowners": [
     "@th0mashoward"
   ],
+  "categories" : [
+    "health",
+    "child",
+    "lifestyle"
+  ],
   "config_flow": true,
   "dependencies": [
     "http",
