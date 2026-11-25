@@ -1,9 +1,11 @@
 # Child Health for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/v/release/th0mashoward/ha_child_health?style=for-the-badge)](https://github.com/th0mashoward/ha_child_health/releases)
-[![License](https://img.shields.io/github/license/th0mashoward/ha_child_health?style=for-the-badge)](LICENSE)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.4%2B-blue.svg?style=for-the-badge)](https://www.home-assistant.io)
+[![Validate](https://github.com/th0mashoward/ha_child_health/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/th0mashoward/ha_child_health/actions/workflows/validate.yml)
+[![GitHub release](https://img.shields.io/github/v/release/th0mashoward/ha_child_health?sort=semver)](https://github.com/th0mashoward/ha_child_health/releases)
+[![License](https://img.shields.io/github/license/th0mashoward/ha_child_health)](LICENSE)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=th0mashoward&repository=ha_child_health&category=integration)
 
 A local-first Home Assistant custom integration for tracking a child's illness
 episodes, temperature readings and medication given, shared between everyone in the
