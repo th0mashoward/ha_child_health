@@ -4,12 +4,12 @@
   "after_dependencies": [
     "frontend"
   ],
+  "categories": [
+    "health_wellbeing",
+    "sensors"
+  ],
   "codeowners": [
     "@th0mashoward"
-  ],
-  "categories" : [
-    "health",
-    "sensor"
   ],
   "config_flow": true,
   "dependencies": [
