@@ -1,0 +1,145 @@
+blueprint:
+  name: Child Health - next dose available
+  author: Howard Web Co
+  description: >-
+    Notifies when the minimum gap you set for a medicine has passed, with a "Log dose
+    given" button on the lock screen. If someone else has already logged a dose, the button
+    refuses and shows when the next one is allowed (with a "Log anyway" option), which helps
+    avoid a double dose. This only records doses and uses the interval you entered from the
+    label. It never suggests a dose. Add one automation per child.
+  domain: automation
+  source_url: https://github.com/th0mashoward/ha_child_health/blob/main/blueprints/automation/child_health/dose_available.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    child:
+      name: Child
+      selector:
+        config_entry:
+          integration: child_health
+    notify_services:
+      name: Notify services
+      description: >-
+        One or more notify actions to send to, for example notify.mobile_app_toms_phone.
+        Add one per parent. Everyone gets the confirmation when a dose is logged.
+      default: []
+      selector:
+        text:
+          multiple: true
+    given_by:
+      name: Logged as
+      description: >-
+        Name recorded as the person who gave the dose when a button is tapped. The app does
+        not say which parent tapped it. Leave empty to record no name.
+      default: ""
+      selector:
+        text:
+
+mode: queued
+max: 10
+
+variables:
+  child: !input child
+  notify_services: !input notify_services
+  given_by: !input given_by
+  medicine: >-
+    {% if trigger.id == 'due' -%}
+      {{ trigger.event.data.medicine }}
+    {%- else -%}
+      {{ (trigger.event.data.action | default('') | string).split('|')[3] | default('') }}
+    {%- endif %}
+  tag: "child_health_dose_{{ child }}_{{ medicine | slugify }}"
+
+triggers:
+  - trigger: event
+    event_type: child_health_dose_available
+    id: due
+  - trigger: event
+    event_type: mobile_app_notification_action
+    id: tapped
+
+conditions:
+  - condition: template
+    value_template: >-
+      {% if trigger.id == 'due' %}
+        {{ trigger.event.data.entry_id == child }}
+      {% else %}
+        {% set action = trigger.event.data.action | default('') | string %}
+        {{ action.startswith('CHD|dose|' ~ child ~ '|') or action.startswith('CHD|force|' ~ child ~ '|') }}
+      {% endif %}
+
+actions:
+  - choose:
+      # --- the minimum gap has passed ---------------------------------------
+      - conditions:
+          - condition: trigger
+            id: due
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: "{{ trigger.event.data.child }}: {{ medicine }} can be given again"
+                    message: >-
+                      The {{ '%g' | format(trigger.event.data.interval_hours | float) }}-hour gap
+                      you set has passed. Check the label and how {{ trigger.event.data.child }}
+                      is before giving it.
+                    data:
+                      tag: "{{ tag }}"
+                      actions:
+                        - action: "CHD|dose|{{ child }}|{{ medicine }}"
+                          title: Log dose given
+      # --- a button was tapped ---------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: tapped
+        sequence:
+          - action: child_health.log_dose
+            continue_on_error: true
+            response_variable: result
+            data:
+              config_entry: "{{ child }}"
+              medicine: "{{ medicine }}"
+              given_by: "{{ given_by }}"
+              fail_if_too_soon: false
+              override: "{{ trigger.event.data.action.startswith('CHD|force|') }}"
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ result is defined and result.logged }}"
+                      sequence:
+                        - action: "{{ repeat.item }}"
+                          data:
+                            title: "{{ result.child }}: {{ medicine }} logged"
+                            message: >-
+                              {{ given_by if given_by else 'A dose' }} logged at
+                              {{ as_timestamp(result.logged_at) | timestamp_custom('%H:%M') }}.
+                              Next allowed from
+                              {{ as_timestamp(result.next_dose_allowed) | timestamp_custom('%H:%M') }}.
+                            data:
+                              tag: "{{ tag }}"
+                    - conditions: "{{ result is defined and result.too_soon }}"
+                      sequence:
+                        - action: "{{ repeat.item }}"
+                          data:
+                            title: "{{ result.child }}: {{ medicine }} not logged"
+                            message: >-
+                              Given too recently. Based on the gap you set, the next dose is
+                              allowed from
+                              {{ as_timestamp(result.next_dose_allowed) | timestamp_custom('%H:%M') }}.
+                            data:
+                              tag: "{{ tag }}"
+                              actions:
+                                - action: "CHD|force|{{ child }}|{{ medicine }}"
+                                  title: Log anyway
+                  default:
+                    - action: "{{ repeat.item }}"
+                      data:
+                        title: "{{ medicine }} could not be logged"
+                        message: >-
+                          Something went wrong. Check the Child Health integration and the
+                          medicine name.
+                        data:
+                          tag: "{{ tag }}"

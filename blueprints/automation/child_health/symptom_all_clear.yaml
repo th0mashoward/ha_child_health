@@ -1,0 +1,55 @@
+blueprint:
+  name: Child Health - symptom all clear
+  author: Howard Web Co
+  description: >-
+    Sends a notification when the all-clear time has passed since a child's last
+    bout of a symptom such as vomiting or diarrhoea (48 hours by default). Schools and
+    nurseries differ, so check the policy that applies to you. Add one automation per child.
+  domain: automation
+  source_url: https://github.com/th0mashoward/ha_child_health/blob/main/blueprints/automation/child_health/symptom_all_clear.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    child:
+      name: Child
+      selector:
+        config_entry:
+          integration: child_health
+    notify_services:
+      name: Notify services
+      description: >-
+        One or more notify actions to send to, for example notify.mobile_app_toms_phone.
+        Add one per parent.
+      default: []
+      selector:
+        text:
+          multiple: true
+
+mode: queued
+max: 10
+
+variables:
+  child: !input child
+  notify_services: !input notify_services
+
+triggers:
+  - trigger: event
+    event_type: child_health_symptom_all_clear
+
+conditions:
+  - condition: template
+    value_template: "{{ trigger.event.data.entry_id == child }}"
+
+actions:
+  - repeat:
+      for_each: "{{ notify_services }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ trigger.event.data.child }}: {{ trigger.event.data.symptom | lower }} all clear"
+            message: >-
+              {{ '%g' | format(trigger.event.data.clear_hours | float) }} hours since the last
+              time ({{ as_timestamp(trigger.event.data.last_occurred) | timestamp_custom('%a %H:%M') }}).
+              Check your school or nursery's own rules before going back.
+            data:
+              tag: "child_health_clear_{{ child }}_{{ trigger.event.data.symptom | slugify }}"

@@ -1,0 +1,137 @@
+blueprint:
+  name: Child Health - fever alert with temperature reply
+  author: Howard Web Co
+  description: >-
+    When a fever starts, sends a notification with a "Log new reading" button, and sends
+    another reminder when it is time to recheck (the recheck time in the child's options).
+    Tapping the button asks you to type the reading (for example 38.4), which is then
+    logged. Add one automation per child.
+  domain: automation
+  source_url: https://github.com/th0mashoward/ha_child_health/blob/main/blueprints/automation/child_health/fever_log_temperature.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    child:
+      name: Child
+      selector:
+        config_entry:
+          integration: child_health
+    notify_services:
+      name: Notify services
+      description: >-
+        One or more notify actions to send to, for example notify.mobile_app_toms_phone.
+      default: []
+      selector:
+        text:
+          multiple: true
+
+mode: queued
+max: 10
+
+variables:
+  child: !input child
+  notify_services: !input notify_services
+  tag: "child_health_fever_{{ child }}"
+  typed: "{{ trigger.event.data.reply_text | default('') | string | replace(',', '.') }}"
+  numbers: "{{ typed | regex_findall('[0-9]+(?:[.][0-9]+)?') }}"
+  reading: "{{ numbers[0] | float(0) if numbers | length > 0 else 0 }}"
+
+triggers:
+  - trigger: event
+    event_type: child_health_fever_detected
+    id: fever
+  - trigger: event
+    event_type: child_health_recheck_temperature
+    id: recheck
+  - trigger: event
+    event_type: mobile_app_notification_action
+    id: tapped
+
+conditions:
+  - condition: template
+    value_template: >-
+      {% if trigger.id in ['fever', 'recheck'] %}
+        {{ trigger.event.data.entry_id == child }}
+      {% else %}
+        {{ (trigger.event.data.action | default('') | string) == 'CHF|temp|' ~ child }}
+      {% endif %}
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: fever
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: "{{ trigger.event.data.child }}: {{ trigger.event.data.temperature }}{{ trigger.event.data.unit }}"
+                    message: >-
+                      At or above the {{ trigger.event.data.threshold }}{{ trigger.event.data.unit }}
+                      fever threshold you set.
+                    data:
+                      tag: "{{ tag }}"
+                      actions:
+                        - action: "CHF|temp|{{ child }}"
+                          title: Log new reading
+                          behavior: textInput
+                          textInputButtonTitle: Log
+                          textInputPlaceholder: e.g. 38.4
+      - conditions:
+          - condition: trigger
+            id: recheck
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: "Time to recheck {{ trigger.event.data.child }}'s temperature"
+                    message: >-
+                      Last reading {{ trigger.event.data.last_temperature }}{{ trigger.event.data.unit }}
+                      at {{ as_timestamp(trigger.event.data.last_at) | timestamp_custom('%H:%M') }}.
+                      Tap to log a new one.
+                    data:
+                      tag: "{{ tag }}"
+                      actions:
+                        - action: "CHF|temp|{{ child }}"
+                          title: Log new reading
+                          behavior: textInput
+                          textInputButtonTitle: Log
+                          textInputPlaceholder: e.g. 38.4
+      - conditions:
+          - condition: trigger
+            id: tapped
+        sequence:
+          - choose:
+              - conditions: "{{ reading | float(0) > 0 }}"
+                sequence:
+                  - action: child_health.log_temperature
+                    continue_on_error: true
+                    response_variable: result
+                    data:
+                      config_entry: "{{ child }}"
+                      temperature: "{{ reading }}"
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ result is defined and result.id is defined }}"
+                      sequence:
+                        - action: "{{ repeat.item }}"
+                          data:
+                            title: "{{ result.child }}: {{ result.temperature }}{{ result.unit }} logged"
+                            message: "{{ 'Still at or above the fever threshold.' if result.fever else 'Below the fever threshold.' }}"
+                            data:
+                              tag: "{{ tag }}"
+                  default:
+                    - action: "{{ repeat.item }}"
+                      data:
+                        title: Temperature not logged
+                        message: >-
+                          Couldn't read "{{ typed }}" as a temperature. Try again with a number
+                          like 38.4.
+                        data:
+                          tag: "{{ tag }}"

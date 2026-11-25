@@ -1,0 +1,184 @@
+blueprint:
+  name: Child Health - quick log on the lock screen
+  author: Howard Web Co
+  description: >-
+    While a child is marked as ill (the "Currently ill" sensor is on), keeps a notification
+    on the lock screen with three buttons: log the first symptom, log the second symptom,
+    and log a temperature (you type the reading). It is removed when the illness is ended.
+    Android allows three buttons, so this uses exactly three. Add one automation per child.
+  domain: automation
+  source_url: https://github.com/th0mashoward/ha_child_health/blob/main/blueprints/automation/child_health/quick_log.yaml
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    child:
+      name: Child
+      selector:
+        config_entry:
+          integration: child_health
+    ill_sensor:
+      name: Currently ill sensor
+      description: The "Currently ill" binary sensor for this child.
+      selector:
+        entity:
+          filter:
+            - integration: child_health
+              domain: binary_sensor
+    notify_services:
+      name: Notify services
+      description: >-
+        One or more notify actions to send to, for example notify.mobile_app_toms_phone.
+      default: []
+      selector:
+        text:
+          multiple: true
+    symptom_1:
+      name: First symptom button
+      description: Must match a symptom type set up for this child.
+      default: Vomiting
+      selector:
+        text:
+    symptom_2:
+      name: Second symptom button
+      description: Must match a symptom type set up for this child.
+      default: Diarrhoea
+      selector:
+        text:
+
+mode: queued
+max: 10
+
+variables:
+  child: !input child
+  notify_services: !input notify_services
+  symptom_1: !input symptom_1
+  symptom_2: !input symptom_2
+  tag: "child_health_quick_{{ child }}"
+  parts: "{{ (trigger.event.data.action | default('') | string).split('|') if trigger.id == 'tapped' else [] }}"
+  kind: "{{ parts[1] | default('') }}"
+  typed: "{{ (trigger.event.data.reply_text | default('') | string | replace(',', '.')) if trigger.id == 'tapped' else '' }}"
+  numbers: "{{ typed | regex_findall('[0-9]+(?:[.][0-9]+)?') }}"
+  reading: "{{ numbers[0] | float(0) if numbers | length > 0 else 0 }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input ill_sensor
+    to: "on"
+    id: start
+  - trigger: state
+    entity_id: !input ill_sensor
+    to: "off"
+    id: end
+  - trigger: event
+    event_type: mobile_app_notification_action
+    id: tapped
+
+conditions:
+  - condition: template
+    value_template: >-
+      {% if trigger.id == 'tapped' %}
+        {{ (trigger.event.data.action | default('') | string).startswith('CHQ|') and parts[2] | default('') == child }}
+      {% else %}
+        true
+      {% endif %}
+
+actions:
+  - choose:
+      # --- illness started: show the lock-screen buttons -------------------------
+      - conditions:
+          - condition: trigger
+            id: start
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: Log from the lock screen
+                    message: Tap to log something for the current illness.
+                    data:
+                      tag: "{{ tag }}"
+                      sticky: "true"
+                      persistent: true
+                      actions:
+                        - action: "CHQ|sym|{{ child }}|{{ symptom_1 }}"
+                          title: "{{ symptom_1 }}"
+                        - action: "CHQ|sym|{{ child }}|{{ symptom_2 }}"
+                          title: "{{ symptom_2 }}"
+                        - action: "CHQ|temp|{{ child }}"
+                          title: Temperature
+                          behavior: textInput
+                          textInputButtonTitle: Log
+                          textInputPlaceholder: e.g. 38.4
+      # --- illness ended: remove them ----------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: end
+        sequence:
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    message: clear_notification
+                    data:
+                      tag: "{{ tag }}"
+      # --- a button was tapped --------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: tapped
+          - condition: template
+            value_template: "{{ kind == 'sym' }}"
+        sequence:
+          - action: child_health.log_symptom
+            continue_on_error: true
+            response_variable: result
+            data:
+              config_entry: "{{ child }}"
+              symptom: "{{ parts[3] }}"
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: >-
+                      {{ (result.child ~ ': ' ~ result.symptom ~ ' logged') if result is defined else 'Could not log that' }}
+                    message: >-
+                      {% if result is defined -%}
+                        All clear after {{ '%g' | format(result.clear_hours | float) }} hours
+                        without another ({{ as_timestamp(result.all_clear_at) | timestamp_custom('%a %H:%M') }}).
+                      {%- else -%}
+                        Check the symptom name matches one set up for this child.
+                      {%- endif %}
+                    data:
+                      tag: "{{ tag }}_confirm"
+      - conditions:
+          - condition: trigger
+            id: tapped
+          - condition: template
+            value_template: "{{ kind == 'temp' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ reading | float(0) > 0 }}"
+                sequence:
+                  - action: child_health.log_temperature
+                    continue_on_error: true
+                    response_variable: result
+                    data:
+                      config_entry: "{{ child }}"
+                      temperature: "{{ reading }}"
+          - repeat:
+              for_each: "{{ notify_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: >-
+                      {{ (result.child ~ ': ' ~ result.temperature ~ result.unit ~ ' logged') if result is defined and result.id is defined else 'Temperature not logged' }}
+                    message: >-
+                      {% if result is defined and result.id is defined -%}
+                        {{ 'At or above the fever threshold.' if result.fever else 'Below the fever threshold.' }}
+                      {%- else -%}
+                        Couldn't read "{{ typed }}" as a temperature. Try again with a number like 38.4.
+                      {%- endif %}
+                    data:
+                      tag: "{{ tag }}_confirm"

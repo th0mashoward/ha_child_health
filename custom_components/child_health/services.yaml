@@ -1,0 +1,119 @@
+log_symptom:
+  fields:
+    config_entry: &child
+      required: true
+      selector:
+        config_entry:
+          integration: child_health
+    symptom:
+      required: true
+      example: Vomiting
+      selector:
+        text:
+    occurred_at: &occurred
+      required: false
+      selector:
+        datetime:
+    note:
+      required: false
+      selector:
+        text:
+          multiline: true
+
+log_temperature:
+  fields:
+    config_entry: *child
+    temperature:
+      required: true
+      example: 38.2
+      selector:
+        number:
+          min: 30
+          max: 113
+          step: 0.1
+          mode: box
+    occurred_at: *occurred
+    note:
+      required: false
+      selector:
+        text:
+          multiline: true
+
+log_dose:
+  fields:
+    config_entry: *child
+    medicine:
+      required: true
+      example: Medicine A
+      selector:
+        text:
+    given_by:
+      required: false
+      selector:
+        text:
+    occurred_at: *occurred
+    note:
+      required: false
+      selector:
+        text:
+          multiline: true
+    override:
+      required: false
+      default: false
+      selector:
+        boolean:
+    fail_if_too_soon:
+      required: false
+      default: true
+      selector:
+        boolean:
+
+start_episode:
+  fields:
+    config_entry: *child
+    illness:
+      required: false
+      example: Chickenpox
+      selector:
+        text:
+    occurred_at: *occurred
+    notes:
+      required: false
+      selector:
+        text:
+          multiline: true
+
+end_episode:
+  fields:
+    config_entry: *child
+    occurred_at: *occurred
+
+delete_entry:
+  fields:
+    config_entry: *child
+    kind:
+      required: true
+      selector:
+        select:
+          options:
+            - symptom
+            - temperature
+            - dose
+            - episode
+          translation_key: kind
+    record_id:
+      required: true
+      selector:
+        text:
+
+get_history:
+  fields:
+    config_entry: *child
+    days:
+      required: false
+      default: 7
+      selector:
+        number:
+          min: 1
+          max: 3650
+          mode: box

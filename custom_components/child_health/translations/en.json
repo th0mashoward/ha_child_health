@@ -1,0 +1,290 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a child",
+        "description": "Track temperature, illness and medication for one child. Add one entry per child. Data stays on your Home Assistant instance.",
+        "data": {
+          "name": "Name",
+          "birth_date": "Date of birth (optional)",
+          "temperature_unit": "Temperature unit",
+          "copy_from": "Copy settings from (optional)"
+        },
+        "data_description": {
+          "copy_from": "Copies the fever threshold, recheck time, medicines and symptom types from another child. Names, dates of birth and logged history are not copied."
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name.",
+      "birth_date_in_future": "Date of birth can't be in the future.",
+      "unknown_child": "That child isn't set up."
+    },
+    "abort": {
+      "already_configured": "A child with this name has already been added."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Child Health options",
+        "menu_options": {
+          "settings": "Fever and reminder settings",
+          "add_medicine": "Add a medicine",
+          "remove_medicine": "Remove a medicine",
+          "add_symptom": "Add an illness or symptom type",
+          "remove_symptom": "Remove an illness or symptom type",
+          "copy_settings": "Copy settings from another child"
+        }
+      },
+      "settings": {
+        "title": "Fever and reminder settings",
+        "data": {
+          "fever_threshold": "Fever threshold",
+          "recheck_minutes": "Recheck temperature reminder"
+        },
+        "data_description": {
+          "fever_threshold": "A reading at or above this is flagged as a fever. Set it to the value your doctor or health service advises.",
+          "recheck_minutes": "After a reading at or above the fever threshold, remind you to take another if none is logged within this time. A normal reading cancels the reminder."
+        }
+      },
+      "add_medicine": {
+        "title": "Add a medicine",
+        "description": "Enter the minimum time between doses exactly as shown on the medicine's label, or as advised by your doctor or pharmacist. This integration only records doses and reminds you. It never calculates or suggests a dose.",
+        "data": {
+          "name": "Medicine name",
+          "interval_hours": "Minimum hours between doses"
+        }
+      },
+      "remove_medicine": {
+        "title": "Remove a medicine",
+        "data": {
+          "medicines": "Medicines to remove"
+        }
+      },
+      "add_symptom": {
+        "title": "Add an illness or symptom type",
+        "description": "Something you want to log each time it happens, such as vomiting or diarrhoea. 'All clear after' is how many hours with no further episode before it is shown as clear and you are notified. Many schools and nurseries use 48 hours for sickness and diarrhoea, but check the policy that applies to you.",
+        "data": {
+          "name": "Name",
+          "clear_hours": "All clear after (hours)"
+        }
+      },
+      "remove_symptom": {
+        "title": "Remove an illness or symptom type",
+        "data": {
+          "symptoms": "Types to remove"
+        }
+      },
+      "copy_settings": {
+        "title": "Copy settings from another child",
+        "description": "Replaces this child's fever threshold, recheck time, medicines and symptom types with another child's (temperatures are converted if the units differ). Logged history is kept, but entities for symptom types or medicines that are replaced are removed.",
+        "data": {
+          "copy_from": "Copy from"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name.",
+      "medicine_exists": "A medicine with this name already exists.",
+      "symptom_exists": "This type already exists.",
+      "unknown_child": "That child isn't set up."
+    }
+  },
+  "selector": {
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius (°C)",
+        "fahrenheit": "Fahrenheit (°F)"
+      }
+    },
+    "kind": {
+      "options": {
+        "symptom": "Symptom",
+        "temperature": "Temperature",
+        "dose": "Dose",
+        "episode": "Episode"
+      }
+    }
+  },
+  "services": {
+    "log_symptom": {
+      "name": "Log a symptom",
+      "description": "Record a bout of something like vomiting or diarrhoea. The all-clear timer restarts from this time.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "symptom": {
+          "name": "Symptom",
+          "description": "One of the symptom types set up for this child."
+        },
+        "occurred_at": {
+          "name": "When it happened",
+          "description": "Leave empty for now. Set it to log something that happened earlier."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
+        }
+      }
+    },
+    "log_temperature": {
+      "name": "Log a temperature",
+      "description": "Record a temperature reading. A reading at or above the fever threshold fires a fever event.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "In the unit chosen for this child."
+        },
+        "occurred_at": {
+          "name": "When it happened",
+          "description": "Leave empty for now. Set it to log something that happened earlier."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
+        }
+      }
+    },
+    "log_dose": {
+      "name": "Log a dose",
+      "description": "Record a medicine given. It is refused if it is sooner than the minimum interval you set, unless you override. This only records; it never suggests a dose.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "medicine": {
+          "name": "Medicine",
+          "description": "One of the medicines set up for this child."
+        },
+        "given_by": {
+          "name": "Given by",
+          "description": "Who gave it."
+        },
+        "occurred_at": {
+          "name": "When it happened",
+          "description": "Leave empty for now. Set it to log something that happened earlier."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note."
+        },
+        "override": {
+          "name": "Log anyway",
+          "description": "Record it even though it is sooner than the minimum interval."
+        },
+        "fail_if_too_soon": {
+          "name": "Error if too soon",
+          "description": "When off, a dose that is too soon is not logged and the response says so (with when the next dose is allowed) instead of raising an error. Used by the notification blueprint."
+        }
+      }
+    },
+    "start_episode": {
+      "name": "Start an illness episode",
+      "description": "Mark the start of an illness.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "illness": {
+          "name": "Illness",
+          "description": "For example Chickenpox."
+        },
+        "occurred_at": {
+          "name": "Started at",
+          "description": "Leave empty for now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes."
+        }
+      }
+    },
+    "end_episode": {
+      "name": "End the illness episode",
+      "description": "Mark the current illness as over.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "occurred_at": {
+          "name": "Ended at",
+          "description": "Leave empty for now."
+        }
+      }
+    },
+    "delete_entry": {
+      "name": "Delete a record",
+      "description": "Remove a logged record by its id (see Get history).",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "Type of record."
+        },
+        "record_id": {
+          "name": "Record id",
+          "description": "The id from Get history."
+        }
+      }
+    },
+    "get_history": {
+      "name": "Get history",
+      "description": "Return recent symptoms, temperatures, doses and episodes, including record ids.",
+      "fields": {
+        "config_entry": {
+          "name": "Child",
+          "description": "Which child this is for."
+        },
+        "days": {
+          "name": "Days",
+          "description": "How many days back to include."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_child": {
+      "message": "That child isn't set up in Child Health."
+    },
+    "child_not_loaded": {
+      "message": "That child's entry isn't loaded right now."
+    },
+    "unknown_symptom": {
+      "message": "{child} has no symptom type called '{name}'. Add it in the integration options first."
+    },
+    "unknown_medicine": {
+      "message": "{child} has no medicine called '{name}'. Add it in the integration options first."
+    },
+    "future_time": {
+      "message": "The time can't be in the future."
+    },
+    "temperature_out_of_range": {
+      "message": "{value} doesn't look like a valid temperature in {unit}."
+    },
+    "dose_too_soon": {
+      "message": "Based on the {hours}-hour interval you set for {medicine}, the next dose is allowed from {next_allowed}. Check the label, or set 'Log anyway' to record it."
+    },
+    "episode_already_open": {
+      "message": "{child} already has an open illness episode. End it first."
+    },
+    "no_open_episode": {
+      "message": "{child} has no open illness episode."
+    },
+    "record_not_found": {
+      "message": "No record with id {id} was found."
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "services": {
+    "log_symptom": {
+      "service": "mdi:emoticon-sick-outline"
+    },
+    "log_temperature": {
+      "service": "mdi:thermometer-plus"
+    },
+    "log_dose": {
+      "service": "mdi:pill"
+    },
+    "start_episode": {
+      "service": "mdi:medical-bag"
+    },
+    "end_episode": {
+      "service": "mdi:check-circle-outline"
+    },
+    "delete_entry": {
+      "service": "mdi:delete-outline"
+    },
+    "get_history": {
+      "service": "mdi:history"
+    }
+  }
+}

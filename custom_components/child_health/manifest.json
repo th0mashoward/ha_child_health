@@ -1,0 +1,21 @@
+{
+  "domain": "child_health",
+  "name": "Child Health",
+  "after_dependencies": [
+    "frontend"
+  ],
+  "codeowners": [
+    "@th0mashoward"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http",
+    "websocket_api"
+  ],
+  "documentation": "https://github.com/th0mashoward/ha_child_health",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/th0mashoward/ha_child_health/issues",
+  "requirements": [],
+  "version": "0.6.0"
+}
