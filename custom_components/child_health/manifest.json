@@ -9,8 +9,7 @@
   ],
   "categories" : [
     "health",
-    "child",
-    "lifestyle"
+    "sensor"
   ],
   "config_flow": true,
   "dependencies": [
