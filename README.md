@@ -1,5 +1,10 @@
 # Child Health for Home Assistant
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![GitHub Release](https://img.shields.io/github/v/release/th0mashoward/ha_child_health?style=for-the-badge)](https://github.com/th0mashoward/ha_child_health/releases)
+[![License](https://img.shields.io/github/license/th0mashoward/ha_child_health?style=for-the-badge)](LICENSE)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.4%2B-blue.svg?style=for-the-badge)](https://www.home-assistant.io)
+
 A local-first Home Assistant custom integration for tracking a child's illness
 episodes, temperature readings and medication given, shared between everyone in the
 household. Nothing leaves your Home Assistant instance.
